@@ -2,7 +2,8 @@
   (:require [clojure.string :as str]
             [leiningen.polylith.file :as file]
             [leiningen.polylith.cmd.shared :as shared]
-            [clojure.set :as set]))
+            [clojure.set :as set]
+            [malli.experimental :as mx]))
 
 (defn ->ifc-components [ws-path top-dir m component all-interfaces]
   (let [interface (shared/interface-of ws-path top-dir component all-interfaces)]
@@ -22,34 +23,75 @@
 (defn def? [code]
   (if (list? code)
     (let [f (first code)]
-      (or (= f 'def) (= f 'defn) (= f 'defmacro)))
+      (or (= f 'def) (= f 'defn) (= f 'defmacro) (= f 'mx/defn)))
     false))
 
 (defn read-code [path]
   (filterv def? (drop 1 (file/read-file path))))
 
+(defn mx-defn-args
+  [code]
+  (loop [arg-list code
+         args     []]
+    (if (empty? arg-list)
+      args
+      (if (= (second arg-list) :-)
+        (let [[arg _ _ & rest] arg-list]
+          (recur rest (conj args arg)))
+        (let [[arg & rest] arg-list]
+          (recur rest (conj args arg)))))))
+
+(defn def->sig
+  [[type name & _]]
+  #{{:type  type
+     :name  name
+     :args  []
+     :arity 0}})
+
+(defn mx-defn-code->sig
+  [name code]
+  (let [args (mx-defn-args (first code))]
+    {:type 'defn
+     :name name
+     :args args
+     :arity (count args)}))
+
+(defn mx-defn->sig
+  [[_ name & src-code]]
+  (let [code (filter #(or (list? %) (vector? %)) src-code)
+        code (if (and (vector? (first code))
+                      (keyword? (first (first code))))
+               (rest code)
+               code)]
+    (if (vector? (first code))
+      #{(mx-defn-code->sig name code)}
+      (->> code
+           (map (partial mx-defn-code->sig name))
+           set))))
+
+(defn other->sig
+  [[type name & src-code]]
+  (let [code (drop-while #(not (or (list? %)
+                                   (vector? %)))
+                         src-code)]
+    (if (vector? (first code))
+      #{{:type  type
+         :name  name
+         :args  (first code)
+         :arity (-> code first count)}}
+      (set (map #(hash-map :type type
+                           :name name
+                           :args (first %)
+                           :arity (-> % first count)) code)))))
+
 (defn signatures [src-code]
   "Takes the source code of a def, function or macro
    and returns a list with the signatures."
-  (let [type (first src-code)
-        name (second src-code)
-        code (drop-while #(not (or (list? %)
-                                   (vector? %)))
-                         src-code)]
-    (if (= 'def type)
-      #{{:type type
-         :name name
-         :args []
-         :arity 0}}
-      (if (vector? (first code))
-        #{{:type type
-           :name name
-           :args (first code)
-           :arity (-> code first count)}}
-        (set (map #(hash-map :type type
-                             :name name
-                             :args (first %)
-                             :arity (-> % first count)) code))))))
+  (let [type (first src-code)]
+    (condp = type
+      'def     (def->sig src-code)
+      'mx/defn (mx-defn->sig src-code)
+      (other->sig src-code))))
 
 (defn ifc-set [defs]
   (set (map :name defs)))
