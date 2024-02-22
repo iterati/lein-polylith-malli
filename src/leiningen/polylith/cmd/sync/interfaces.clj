@@ -88,8 +88,8 @@
    and returns a list with the signatures."
   (let [type (first src-code)]
     (condp = type
-      'def     (def->sig src-code)
-      'mx/defn (mx-defn->sig src-code)
+      'def        (def->sig src-code)
+      'malli/defn (mx-defn->sig src-code)
       (other->sig src-code))))
 
 (defn ifc-set [defs]
