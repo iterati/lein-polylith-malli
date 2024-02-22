@@ -6,7 +6,6 @@
   :scm {:name "git", :url "https://github.com/iterati/lein-polylith-malli"}
   :dependencies [[org.clojure/clojure "1.11.1"]
                  [zprint "0.4.15"]
-                 [org.freemarker/freemarker "2.3.28"]
-                 [metosin/malli "0.14.0"]]
+                 [org.freemarker/freemarker "2.3.28"]]
 
   :eval-in-leiningen true)

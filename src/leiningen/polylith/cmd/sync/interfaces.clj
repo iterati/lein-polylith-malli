@@ -2,8 +2,7 @@
   (:require [clojure.string :as str]
             [leiningen.polylith.file :as file]
             [leiningen.polylith.cmd.shared :as shared]
-            [clojure.set :as set]
-            [malli.experimental :as mx]))
+            [clojure.set :as set]))
 
 (defn ->ifc-components [ws-path top-dir m component all-interfaces]
   (let [interface (shared/interface-of ws-path top-dir component all-interfaces)]
@@ -23,7 +22,7 @@
 (defn def? [code]
   (if (list? code)
     (let [f (first code)]
-      (or (= f 'def) (= f 'defn) (= f 'defmacro) (= f 'mx/defn)))
+      (or (= f 'def) (= f 'defn) (= f 'defmacro) (= f 'malli/defn)))
     false))
 
 (defn read-code [path]
